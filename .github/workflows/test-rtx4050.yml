@@ -24,11 +24,20 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install
 
-      - name: Check and build the renderer
+      - name: Check repository asset policy
+        run: cargo xtask policy
+
+      - name: Build the renderer
         run: |
-          cargo xtask policy
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cargo build --locked --release --features diagnostics --package victory --bin victory
+          $buildLog = Join-Path $env:RUNNER_TEMP 'renderer-build.log'
+          cargo build --locked --release --features diagnostics --package victory --bin victory 2>&1 | Tee-Object -FilePath $buildLog
+          $buildExit = $LASTEXITCODE
+          if ($buildExit -ne 0) {
+            Select-String -LiteralPath $buildLog -Pattern '^error(?:\[E\d+\])?:','^\s+--> ' | Select-Object -Last 20 | ForEach-Object {
+              "::error::$($_.Line.Trim())"
+            }
+            exit $buildExit
+          }
 
       - name: Package and smoke-test the executable
         id: package

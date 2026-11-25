@@ -154,6 +154,11 @@ fn send_behind(this: This, planes: u32, plane_parameters: *const Plane) -> bool 
     }
     // SAFETY: the plane lists `count` resources.
     let resource = unsafe { *plane.resources };
+    // SAFETY: the title passes `planes` plane descriptions. The compositor
+    // presents both textures together on the synchronous path.
+    if unsafe { second_plane(planes, plane_parameters, resource) }.is_some() {
+        return false;
+    }
     let Some(texture) = crate::resource::host_resource(resource) else {
         return false;
     };
@@ -876,7 +881,7 @@ fn release_held_now(all: bool) {
                     Held::Present(texture, state, frame) => {
                         let show = || {
                             if let Some(host) = crate::host::host() {
-                                let _ = host.present(&texture, state, frame);
+                                let _ = host.present(&texture, state, frame, None);
                             }
                         };
                         if all {
