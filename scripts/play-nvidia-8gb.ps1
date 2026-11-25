@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$Exe,
-    [int]$DropMips = 2
+    [int]$DropMips,
+    [switch]$LowVram
 )
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -18,13 +19,24 @@ if (-not (Test-Path -LiteralPath $victory -PathType Leaf)) {
 
 Remove-Item Env:VICTORY_SKIP_PIPELINES, Env:VICTORY_BAKE_TEXTURES_MS, Env:VICTORY_CARD_FETCH_INFLIGHT, Env:VICTORY_LEVELS_ON_DEMAND, Env:VICTORY_REFRESH_ONCE, Env:VICTORY_AMBIENT -ErrorAction SilentlyContinue
 
-$env:VICTORY_ASYNC_SUBMIT = "1"
-$env:VICTORY_QUEUE2 = "1"
-$env:VICTORY_INDIRECT_WINDOW = "1"
-$env:VICTORY_TEXTURE_NO_WAIT = "1"
-$env:VICTORY_COPY_PLAIN = "1"
-$env:VICTORY_SKIP_WC_COMPARE = "1"
-$env:VICTORY_WIDE_TEXTURES = "1"
+if ($LowVram) {
+    $env:VICTORY_RELAY = "0"
+    $env:VICTORY_LATE_WAIT = "0"
+}
+
+$optimizations = if ($LowVram) { "0" } else { "1" }
+$env:VICTORY_ASYNC_SUBMIT = $optimizations
+$env:VICTORY_QUEUE2 = $optimizations
+$env:VICTORY_INDIRECT_WINDOW = $optimizations
+$env:VICTORY_TEXTURE_NO_WAIT = $optimizations
+$env:VICTORY_COPY_PLAIN = $optimizations
+$env:VICTORY_SKIP_WC_COMPARE = $optimizations
+$env:VICTORY_WIDE_TEXTURES = $optimizations
+
+if (-not $PSBoundParameters.ContainsKey('DropMips')) {
+    $DropMips = if ($LowVram) { 3 } else { 2 }
+}
 $env:VICTORY_TEXTURE_DROP_MIPS = "$DropMips"
 
 & $victory run --execute $Exe
+exit $LASTEXITCODE

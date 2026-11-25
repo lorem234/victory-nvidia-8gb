@@ -18,6 +18,15 @@ Open the latest successful [Windows x64 build](https://github.com/lorem234/victo
 .\scripts\play-nvidia-8gb.ps1 -Exe "path\to\title.exe"
 ```
 
+For a 6 GB NVIDIA GPU or when Direct3D reports a device hang, try `-LowVram`.
+This mode submits GPU work synchronously and drops three of the largest
+texture mip levels where supported. It trades texture detail and frame rate
+for more GPU memory headroom.
+
+```powershell
+.\scripts\play-nvidia-8gb.ps1 -Exe "path\to\title.exe" -LowVram
+```
+
 ## Quick Build & Run from source
 
 ```powershell
