@@ -1,0 +1,32 @@
+name: Publish the built RTX 4050 test ZIP
+
+on:
+  push:
+    branches: [test/publish-rtx4050]
+    paths: [.github/workflows/publish-rtx4050.yml]
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ github.token }}
+          run-id: '45651442540'
+          name: victory-rtx4050-series-s.zip
+          skip-decompress: true
+      - name: Attach the ZIP to the existing source tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -f victory-rtx4050-series-s.zip
+          tag=rtx4050-series-s-0310d24
+          if ! result=$(gh release create "$tag" victory-rtx4050-series-s.zip --repo "$GITHUB_REPOSITORY" --verify-tag --prerelease --latest=false --title 'RTX 4050 Series S test build' --notes 'Experimental Series S presentation and paired instance-culling shaders.'); then
+            echo '::error::Could not publish the release from the existing tag.'
+            exit 1
+          fi
+          printf '%s\n' "$result"
