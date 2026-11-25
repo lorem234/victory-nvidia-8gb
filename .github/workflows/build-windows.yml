@@ -1,0 +1,58 @@
+name: Build Windows x64
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build Windows x64 executable
+        run: cargo build --locked --release --target x86_64-pc-windows-msvc --package victory --bin victory
+
+      - name: Package and smoke-test the executable
+        shell: pwsh
+        run: |
+          $package = Join-Path $env:RUNNER_TEMP 'victory-windows-x64'
+          $scripts = New-Item -ItemType Directory -Path (Join-Path $package 'scripts') -Force
+          Copy-Item -LiteralPath 'target/x86_64-pc-windows-msvc/release/victory.exe', 'LICENSE', 'victory.example.toml' -Destination $package
+          Copy-Item -LiteralPath 'scripts/play-nvidia-8gb.ps1' -Destination $scripts.FullName
+
+          & (Join-Path $package 'victory.exe') --help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload Windows x64 ZIP
+        id: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: victory-nvidia-8gb-windows-x64
+          path: ${{ runner.temp }}/victory-windows-x64/
+          if-no-files-found: error
+
+      - name: Add download links to the run summary
+        shell: pwsh
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}/archive/${{ github.sha }}.zip
+        run: |
+          @(
+            "[Download Windows x64 ZIP]($env:ARTIFACT_URL)"
+            ''
+            "[Download the corresponding source]($env:SOURCE_URL)"
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY

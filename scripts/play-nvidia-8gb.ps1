@@ -7,8 +7,12 @@ param(
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $victory = Join-Path $repoRoot "target\release\victory.exe"
 
-if (-not (Test-Path $victory)) {
-    Write-Error "Release binary not found at $victory. Build it first with: cargo build --release --bin victory"
+if (-not (Test-Path -LiteralPath $victory -PathType Leaf)) {
+    $victory = Join-Path $repoRoot "victory.exe"
+}
+
+if (-not (Test-Path -LiteralPath $victory -PathType Leaf)) {
+    Write-Error "victory.exe was not found. Extract the full Windows x64 build ZIP or run cargo build --release --bin victory from the repository."
     exit 1
 }
 

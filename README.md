@@ -10,7 +10,15 @@ A fork of [fxceless/victory-fork](https://github.com/fxceless/victory-fork) (its
 - **Performance & Visuals:** ~6 FPS (`172.7 ms/frame` at 5,181 draws, `175.2 ms/frame` at 6,271 draws; `~7.2 / 8.0 GB VRAM`, `38% GPU`) with full walls, doors, floor, and natural indirect lighting after one warm-up launch.
 - **Key 8 GB VRAM Finding:** Setting `VICTORY_TEXTURE_DROP_MIPS=2` (without `VICTORY_LEVELS_ON_DEMAND=1`) prevents 8 GB VRAM exhaustion so both diffuse textures and indirect lighting probes upload cleanly on the first launch.
 
-## Quick Build & Run
+## Download and run on Windows
+
+Open the latest successful [Windows x64 build](https://github.com/lorem234/victory-nvidia-8gb/actions/workflows/build-windows.yml) while signed in to GitHub and download `victory-nvidia-8gb-windows-x64` from the run's artifacts. Extract the ZIP, then run the launcher from the extracted folder with the path to your own title executable.
+
+```powershell
+.\scripts\play-nvidia-8gb.ps1 -Exe "path\to\title.exe"
+```
+
+## Quick Build & Run from source
 
 ```powershell
 cargo build --release --bin victory
