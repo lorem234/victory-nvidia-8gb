@@ -76,7 +76,7 @@ fn build() -> [u8; 32] {
     h.update(include_bytes!("shader_cache.rs"));
     // The lists this file reads for the translator (`translate_listed`): the
     // shader crate's fingerprint does not see them.
-    for name in ["VICTORY_WAVE_WIDE_ONLY", "VICTORY_FIRSTLANE_OWN_ONLY"] {
+    for name in ["VICTORY_WAVE_WIDE_ONLY", "VICTORY_FIRSTLANE_OWN_ONLY", "VICTORY_PAIR_CULLING"] {
         h.update(name.as_bytes());
         h.update(b"=");
         if let Some(value) = std::env::var_os(name) {
@@ -93,10 +93,15 @@ fn build() -> [u8; 32] {
 /// the cache.
 fn translate_listed(c: &[u8]) -> Result<HostShader, String> {
     let hash = blake3::hash(c).to_hex();
+    // These prop/tree instance-culling programs could fill the streaming
+    // pools with the previous lowering. See Marvisak/VIctory issue #698.
+    const CULLING: [&str; 4] = ["17af15c4015cb4b6", "55679a0547649d0b", "fdd56d97a806bcca", "89d08e561897d4e5"];
+    let prefer_pairs = CULLING.contains(&&hash[..16])
+        && std::env::var_os("VICTORY_PAIR_CULLING").is_none_or(|v| v != "0");
     victory_shader::emit::with_wave_wide(listed(&WAVE_WIDE, "VICTORY_WAVE_WIDE_ONLY", &WAVE_WIDE_DEFAULT, &hash), || {
         victory_shader::emit::with_firstlane_own(
             listed(&FIRSTLANE_OWN, "VICTORY_FIRSTLANE_OWN_ONLY", &FIRSTLANE_OWN_DEFAULT, &hash),
-            || victory_shader::emit::translate(c),
+            || victory_shader::emit::with_preferred_pairs(prefer_pairs, || victory_shader::emit::translate(c)),
         )
     })
     .map_err(|e| e.to_string())

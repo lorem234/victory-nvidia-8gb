@@ -351,6 +351,16 @@ fn translate_plain(container: &[u8]) -> Result<HostShader, ShaderError> {
 thread_local! {
     /// [`with_wave_wide`]'s choice, for this thread's translations.
     static WAVE_WIDE_HERE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static PREFER_PAIRED_HERE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Prefer carrying the two halves of a console wave together before trying
+/// forms that can change which lanes cooperate on an output.
+pub fn with_preferred_pairs<R>(on: bool, f: impl FnOnce() -> R) -> R {
+    let before = PREFER_PAIRED_HERE.replace(on);
+    let out = f();
+    PREFER_PAIRED_HERE.set(before);
+    out
 }
 
 /// Runs `f` (a translation) with the wave-wide form of a wave64 compute
@@ -560,6 +570,13 @@ fn emit_forms(
             }
         };
         let done = |r: &Result<(HostShader, Option<u32>), ShaderError>| matches!(r, Ok((_, wave)) if *wave != Some(64));
+        if PREFER_PAIRED_HERE.get() && pairs_on() {
+            let again = paired(c, native, p, io, res);
+            report("paired lanes, before splitting the wave", &again);
+            if done(&again) {
+                return again;
+            }
+        }
         // Each host wave as a wave of its own (`lower::with_local_waves`),
         // for programs still stopped where not every lane runs.
         let local_on = std::env::var_os("VICTORY_WAVE_LOCAL").is_none_or(|v| v != "0");
