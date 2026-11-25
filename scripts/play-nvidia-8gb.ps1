@@ -22,6 +22,7 @@ Remove-Item Env:VICTORY_SKIP_PIPELINES, Env:VICTORY_BAKE_TEXTURES_MS, Env:VICTOR
 if ($LowVram) {
     $env:VICTORY_RELAY = "0"
     $env:VICTORY_LATE_WAIT = "0"
+    $env:VICTORY_LEVELS_ON_DEMAND = "1"
 }
 
 $optimizations = if ($LowVram) { "0" } else { "1" }
@@ -34,7 +35,7 @@ $env:VICTORY_SKIP_WC_COMPARE = $optimizations
 $env:VICTORY_WIDE_TEXTURES = $optimizations
 
 if (-not $PSBoundParameters.ContainsKey('DropMips')) {
-    $DropMips = if ($LowVram) { 3 } else { 2 }
+    $DropMips = if ($LowVram) { 0 } else { 2 }
 }
 $env:VICTORY_TEXTURE_DROP_MIPS = "$DropMips"
 
