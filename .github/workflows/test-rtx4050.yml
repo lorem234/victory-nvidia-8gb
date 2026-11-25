@@ -52,6 +52,13 @@ jobs:
           Compress-Archive -Path (Join-Path $package '*') -DestinationPath $zip
           "zip=$zip" >> $env:GITHUB_OUTPUT
 
+      - name: Upload the test ZIP to Actions
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.package.outputs.zip }}
+          archive: false
+          if-no-files-found: error
+
       - name: Publish the test ZIP
         env:
           GH_TOKEN: ${{ github.token }}
@@ -59,4 +66,10 @@ jobs:
         run: |
           $tag = 'rtx4050-series-s-' + $env:GITHUB_SHA.Substring(0, 7)
           $notes = "Experimental Series S renderer and NVIDIA shader changes. Source: $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/tree/$env:GITHUB_SHA"
-          gh release create $tag $env:PACKAGE_ZIP --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --prerelease --latest=false --title 'RTX 4050 Series S test build' --notes $notes
+          $publish = gh release create $tag $env:PACKAGE_ZIP --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --prerelease --latest=false --title 'RTX 4050 Series S test build' --notes $notes 2>&1
+          $publishExit = $LASTEXITCODE
+          if ($publishExit -ne 0) {
+            $publish | ForEach-Object { "::error::$(($_ | Out-String).Trim() -replace '\r?\n', '%0A')" }
+            exit $publishExit
+          }
+          $publish
