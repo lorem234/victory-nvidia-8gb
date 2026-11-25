@@ -1,0 +1,53 @@
+name: Build RTX 4050 test package
+
+on:
+  push:
+    branches: [test/rtx4050-series-s]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Check and build the renderer
+        run: |
+          cargo xtask policy
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo build --locked --release --features diagnostics --package victory --bin victory
+
+      - name: Package and smoke-test the executable
+        id: package
+        run: |
+          $package = Join-Path $env:RUNNER_TEMP 'victory-rtx4050-series-s'
+          $scripts = New-Item -ItemType Directory -Path (Join-Path $package 'scripts') -Force
+          Copy-Item -LiteralPath 'target/release/victory.exe', 'LICENSE', 'victory.example.toml' -Destination $package
+          Copy-Item -LiteralPath 'scripts/play-nvidia-8gb.ps1' -Destination $scripts.FullName
+          & (Join-Path $package 'victory.exe') run --help
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $zip = "$package.zip"
+          Compress-Archive -Path (Join-Path $package '*') -DestinationPath $zip
+          "zip=$zip" >> $env:GITHUB_OUTPUT
+
+      - name: Publish the test ZIP
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_ZIP: ${{ steps.package.outputs.zip }}
+        run: |
+          $tag = 'rtx4050-series-s-' + $env:GITHUB_SHA.Substring(0, 7)
+          $notes = "Experimental Series S renderer and NVIDIA shader changes. Source: $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/tree/$env:GITHUB_SHA"
+          gh release create $tag $env:PACKAGE_ZIP --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --prerelease --latest=false --title 'RTX 4050 Series S test build' --notes $notes

@@ -2,7 +2,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Exe,
     [int]$DropMips,
-    [switch]$LowVram
+    [switch]$LowVram,
+    [ValidateSet('series-x', 'series-s')]
+    [string]$Console = 'series-x'
 )
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -39,5 +41,5 @@ if (-not $PSBoundParameters.ContainsKey('DropMips')) {
 }
 $env:VICTORY_TEXTURE_DROP_MIPS = "$DropMips"
 
-& $victory run --execute $Exe
+& $victory run --execute --console $Console $Exe
 exit $LASTEXITCODE
